@@ -117,6 +117,12 @@ terraform destroy
 ```powershell
 Install-WindowsFeature -Name RSAT-DNS-Server
 Install-WindowsFeature -Name RSAT-AD-Tools
+
+dnsmgmt.msc
+
+<img width="947" height="669" alt="Image" src="https://github.com/user-attachments/assets/e617f100-b401-4289-8cb8-f5c4f843f428" />
+
+
 ```
 
 <img width="818" height="695" alt="Image" src="https://github.com/user-attachments/assets/a1ddcdc5-65b2-4a5f-a4e5-34c306af8a8f" />
