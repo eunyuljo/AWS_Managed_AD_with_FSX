@@ -35,6 +35,15 @@ variable "edition" {
   default     = "Standard"
 }
 
+variable "dns_forwarders" {
+  description = "List of DNS forwarders for external domains"
+  type = list(object({
+    domain_name = string
+    dns_ips     = list(string)
+  }))
+  default = []
+}
+
 variable "tags" {
   description = "A map of tags to assign to the resource"
   type        = map(string)

@@ -23,3 +23,43 @@ ec2_key_pair_name            = null  # Set to your key pair name for RDP access
 ec2_root_volume_size         = 50
 ec2_domain_admin_username    = "Admin"
 ec2_allow_rdp_from_internet  = true
+
+# DNS Server Configuration
+dns_server_instance_type              = "t3.micro"
+dns_server_key_pair_name              = null  # Set to your key pair name for SSH access
+dns_server_root_volume_size           = 20
+dns_server_assign_public_ip           = true
+dns_server_allow_ssh_from_internet    = true
+dns_server_zone_name                  = "example.local"
+dns_server_records = [
+  {
+    name  = "test"
+    type  = "A"
+    value = "10.0.1.100"
+  },
+  {
+    name  = "web"
+    type  = "A"
+    value = "10.0.1.200"
+  },
+  {
+    name  = "app"
+    type  = "A"
+    value = "10.0.1.150"
+  }
+]
+dns_server_forwarder_dns = "8.8.8.8; 8.8.4.4"
+
+# DNS Forwarder Configuration
+# Update the DNS IP to point to your DNS server's private IP after deployment
+ad_dns_forwarders = [
+  {
+    domain_name = "example.local"        # External domain to forward
+    dns_ips     = ["10.0.102.100"]       # DNS server private IP (update after deployment)
+  }
+  # Add more forwarders as needed:
+  # {
+  #   domain_name = "company.local"
+  #   dns_ips     = ["10.0.0.100"]
+  # }
+]

@@ -71,3 +71,24 @@ output "ec2_instance_state" {
   description = "State of the EC2 instance"
   value       = module.ec2.instance_state
 }
+
+# DNS Server Outputs
+output "dns_server_instance_id" {
+  description = "ID of the DNS server instance"
+  value       = module.dns_server.instance_id
+}
+
+output "dns_server_private_ip" {
+  description = "Private IP address of the DNS server"
+  value       = module.dns_server.private_ip
+}
+
+output "dns_server_public_ip" {
+  description = "Public IP address of the DNS server"
+  value       = module.dns_server.public_ip
+}
+
+output "dns_server_zone_name" {
+  description = "DNS zone name served by the DNS server"
+  value       = module.dns_server.dns_zone_name
+}

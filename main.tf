@@ -47,6 +47,7 @@ module "active_directory" {
   domain_name     = var.ad_domain_name
   admin_password  = var.ad_admin_password
   edition         = var.ad_edition
+  dns_forwarders  = var.ad_dns_forwarders
   tags            = local.common_tags
 }
 
@@ -85,4 +86,23 @@ module "ec2" {
   tags                    = local.common_tags
 
   depends_on = [module.active_directory]
+}
+
+# DNS Server Module
+module "dns_server" {
+  source = "./modules/dns-server"
+
+  environment              = var.environment
+  vpc_id                  = module.networking.vpc_id
+  vpc_cidr                = module.networking.vpc_cidr_block
+  subnet_id               = module.networking.public_subnets[1]
+  instance_type           = var.dns_server_instance_type
+  key_pair_name           = var.dns_server_key_pair_name
+  root_volume_size        = var.dns_server_root_volume_size
+  assign_public_ip        = var.dns_server_assign_public_ip
+  allow_ssh_from_internet = var.dns_server_allow_ssh_from_internet
+  dns_zone_name           = var.dns_server_zone_name
+  dns_records             = var.dns_server_records
+  forwarder_dns           = var.dns_server_forwarder_dns
+  tags                    = local.common_tags
 }

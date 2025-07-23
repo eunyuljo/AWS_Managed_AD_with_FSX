@@ -114,3 +114,89 @@ variable "ec2_allow_rdp_from_internet" {
   type        = bool
   default     = true
 }
+
+# DNS Forwarder Variables
+variable "ad_dns_forwarders" {
+  description = "List of DNS forwarders for external domains"
+  type = list(object({
+    domain_name = string
+    dns_ips     = list(string)
+  }))
+  default = []
+  
+  validation {
+    condition = alltrue([
+      for forwarder in var.ad_dns_forwarders : 
+      length(forwarder.dns_ips) > 0 && length(forwarder.dns_ips) <= 4
+    ])
+    error_message = "Each DNS forwarder must have between 1 and 4 DNS IP addresses."
+  }
+}
+
+# DNS Server Variables
+variable "dns_server_instance_type" {
+  description = "EC2 instance type for DNS server"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "dns_server_key_pair_name" {
+  description = "Name of the EC2 Key Pair for DNS server SSH access"
+  type        = string
+  default     = null
+}
+
+variable "dns_server_root_volume_size" {
+  description = "Size of the DNS server root volume in GB"
+  type        = number
+  default     = 20
+  validation {
+    condition = var.dns_server_root_volume_size >= 8 && var.dns_server_root_volume_size <= 100
+    error_message = "DNS server root volume size must be between 8 and 100 GB."
+  }
+}
+
+variable "dns_server_assign_public_ip" {
+  description = "Assign public IP to DNS server"
+  type        = bool
+  default     = true
+}
+
+variable "dns_server_allow_ssh_from_internet" {
+  description = "Allow SSH access to DNS server from internet"
+  type        = bool
+  default     = true
+}
+
+variable "dns_server_zone_name" {
+  description = "DNS zone name to serve"
+  type        = string
+  default     = "example.local"
+}
+
+variable "dns_server_records" {
+  description = "List of DNS records to create"
+  type = list(object({
+    name  = string
+    type  = string
+    value = string
+  }))
+  default = [
+    {
+      name  = "test"
+      type  = "A"
+      value = "10.0.1.100"
+    },
+    {
+      name  = "web"
+      type  = "A" 
+      value = "10.0.1.200"
+    }
+  ]
+}
+
+variable "dns_server_forwarder_dns" {
+  description = "Upstream DNS servers for forwarding"
+  type        = string
+  default     = "8.8.8.8; 8.8.4.4"
+}

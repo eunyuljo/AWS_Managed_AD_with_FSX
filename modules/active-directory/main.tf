@@ -123,3 +123,12 @@ resource "aws_directory_service_directory" "managed_ad" {
     Name = "${var.environment}-managed-ad"
   })
 }
+
+# Conditional Forwarders for external DNS
+resource "aws_directory_service_conditional_forwarder" "external_dns" {
+  count = length(var.dns_forwarders)
+
+  directory_id       = aws_directory_service_directory.managed_ad.id
+  remote_domain_name = var.dns_forwarders[count.index].domain_name
+  dns_ips           = var.dns_forwarders[count.index].dns_ips
+}
