@@ -1,0 +1,25 @@
+# AWS Configuration
+aws_region  = "ap-northeast-2"
+environment = "dev"
+
+# VPC Configuration
+vpc_name             = "fsx-vpc"
+vpc_cidr             = "10.0.0.0/16"
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+public_subnet_cidrs  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+# Active Directory Configuration
+ad_domain_name     = "corp.example.com"
+ad_admin_password  = "YourSecurePassword123!"  # Change this!
+ad_edition         = "Standard"
+
+# FSx Configuration
+fsx_storage_capacity    = 300
+fsx_throughput_capacity = 32
+
+# EC2 Configuration
+ec2_instance_type            = "t3.medium"
+ec2_key_pair_name            = null  # Set to your key pair name for RDP access
+ec2_root_volume_size         = 50
+ec2_domain_admin_username    = "Admin"
+ec2_allow_rdp_from_internet  = true
