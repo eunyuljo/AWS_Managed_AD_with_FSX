@@ -1,10 +1,15 @@
-# AWS Managed Microsoft AD with FSx for Windows
+## 작성 배경
 
-AWS Managed Microsoft AD와 FSx for Windows File Server, 외부 DNS 서버를 통합한 완전한 인프라를 구성하는 Terraform 코드입니다.
+AWS FSx 를 사용하기 위해서는 기본적으로 AD 를 통한 연결 구성이 필요하다.
+이 AD에 조인된 서버는 AD의 DNS를 참조하게 되는데, 
+이 DNS는 기본적으로 Conditional Forwarding 를 설정하고 있으며, Recursive 한 동작을 지원하지 않는 관계로 실시간으로 DNS Server의 레코드를 받아오지 않는다. 
+추가적인 대안을 확인하기 위한 기본 Base 인프라를 재현하기 위한 Terraform Code 이다.
+
+추가적으로 FSx 에 대한 연결 방법도 추가적으로 별도로 확인해본다.
 
 ## 아키텍처
 
-- **VPC**: 2개 가용영역의 퍼블릭/프라이빗 서브넷
+- **VPC**: 가용영역의 퍼블릭/프라이빗 서브넷 2개 
 - **AWS Managed Microsoft AD**: Standard 에디션 디렉토리 서비스
 - **FSx for Windows**: AD 통합 파일 시스템
 - **도메인 조인 EC2**: 퍼블릭 서브넷의 Windows Server 2022
@@ -17,6 +22,7 @@ AWS Managed Microsoft AD와 FSx for Windows File Server, 외부 DNS 서버를 �
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 # terraform.tfvars에서 ad_admin_password 수정 필수
+# Terraform 수행 환경에 맞는 일부 설정이 필요하다. PEM 키 설정이 필요하다.
 ```
 
 2. **배포**
@@ -42,6 +48,10 @@ ad_dns_forwarders = [
     dns_ips     = ["10.0.102.150"]  # DNS 서버 IP
   }
 ]
+
+위 DNS IP는 AMZN 2023 으로 생성한 bind9 서버로 해당 인스턴스의 사설 IP를 대상으로 한다.
+AD 가 Forwarder로써 바라보는 외부 DNS라는 의미이다.
+
 ```
 
 ### 외부 DNS 서버
@@ -51,10 +61,14 @@ ad_dns_forwarders = [
 
 ## DNS 테스트
 
+기본 dns_server_records 에 지정된 test.example.local 이 가지고 있는 IP를 정상적으로 질의가 가능한 상태에서 시작한다.
+해당 zone 파일을 수정 후 named 재시작을 하더라도 windows 에서는 즉각적으로 IP가 갱신되지 않는 것을 볼 수 있다.
+
 도메인 조인된 EC2에서:
 ```powershell
 # AD DNS 캐시 초기화
 Clear-DnsClientCache
+# Windows 에서 직접 캐시 초기화해도 어차피 AD의 DNS 에서 Cached 된 IP를 받아오므로 의미 없다.
 
 # 외부 도메인 조회 테스트
 nslookup test.example.local
@@ -92,17 +106,18 @@ terraform destroy
 
 ## 문제 해결
 
-### DNS 캐시 문제
-AWS Managed AD는 관리형 서비스라서 DNS 캐시를 직접 초기화할 수 없습니다:
-
-**해결 방법:**
+**해결 방안:**
 1. 조건부 전달자 재설정
-2. TTL 값 조정 (현재 24시간)
-3. 클라이언트 DNS 캐시 초기화: `Clear-DnsClientCache`
+2. TTL 값 조정
+3. RSAT를 통해 직접 AD에 연결 후 DNS 를 초기화한다. 이 설정을 하는 경우 즉각 받아온다. 
 
-### RSAT (AD 관리 도구)
+
+### RSAT (AD 관리 도구) 설치 및 초기 방법
 도메인 조인된 EC2에서 RSAT 설치:
 ```powershell
 Install-WindowsFeature -Name RSAT-DNS-Server
 Install-WindowsFeature -Name RSAT-AD-Tools
 ```
+
+<img width="818" height="695" alt="Image" src="https://github.com/user-attachments/assets/a1ddcdc5-65b2-4a5f-a4e5-34c306af8a8f" />
+
