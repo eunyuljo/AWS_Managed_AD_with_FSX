@@ -47,7 +47,7 @@ terraform apply
 ```
 
 3. **접속 정보**
-- **RDP 접속**: `terraform output ec2_public_ip`
+- **RDP 접속**: `terraform output ec2_public_ip`, `ad_domain_name\ec2_domain_admin_username`, `ad_admin_password`
 - **DNS 서버**: `terraform output dns_server_public_ip`
 - **FSx 접속**: `\\<fsx_dns_name>\share`
 
@@ -57,7 +57,6 @@ terraform apply
     AD 에 조인된 윈도우에는 가입된 디렉터리 DNS 이름을 기준으로 접근한다.
 	  User: corp.example.com\Admin
 	  Password : 위 tfvars 파일 내 암호 참고
-
 
   2. 인스턴스의 DNS 주소를 확인하여 Directory Service 에 반영된 DNS Server와 일치하는지 비교한다.
 ```
@@ -90,27 +89,58 @@ AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안�
 도메인 조인된 EC2에서:
 ```powershell
 
-# 외부 도메인 조회 테스트하여 현재 반영된 레코드는 기본 10.0.1.100
+# 외부 도메인 조회 테스트 
 nslookup test.example.local
 
+# 사전 정의된 record 로 현재 반영된 레코드는 기본 10.0.1.100 반환받으면 준비 완료
   {
     name  = "test"
     type  = "A"
     value = "10.0.1.100"
   },
-
-# 레코드가 조회되는지까지 확인한다.
-
+```
 
 dns-server 에서도 zone 파일을 직접 수정하여 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 즉각 받아오지 않는다.
-이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 
-이 캐시된 값을 반환해주기 때문이다.
+이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 이 캐시된 값을 반환해주기 때문이다.
+이 과정에서 애플리케이션 요청에 있어서 통신 불량이 발생한다.
 
+---
+
+## 이슈 해결 방법
+
+### RSAT (AD 관리 도구) 설치 및 접속
+
+도메인 조인된 EC2에서 RSAT 설치:
+```powershell
+Install-WindowsFeature -Name RSAT-DNS-Server
+Install-WindowsFeature -Name RSAT-AD-Tools
+
+# 설정 후 dns manager 접속하여 connect dns server에 dns ip로 연결한다.
+
+dnsmgmt.msc
+
+```
+
+1. Clear Cache
+
+<img width="947" height="669" alt="Image" src="https://github.com/user-attachments/assets/e617f100-b401-4289-8cb8-f5c4f843f428" />
+
+
+<img width="818" height="695" alt="Image" src="https://github.com/user-attachments/assets/a1ddcdc5-65b2-4a5f-a4e5-34c306af8a8f" />
+
+
+캐시를 클리어해보면 정상적으로 질의되는 것을 볼 수 있다.
+
+
+
+2. TTL 값 0 으로 설정
 
 ```bash
 # 10.0.1.133 -> Directory Service 에서 확인 가능한 DNS IP
 Get-DnsServerCache -ComputerName "10.0.1.133"
 ```
+<img width="654" height="390" alt="Image" src="https://github.com/user-attachments/assets/74e0b7c0-0af6-4d58-af07-8a6d9f888ccb" />
+
 
 명령을 통해 확인해보면 MAXTTL 은 1시간, MaxNegativeTTL은 15분이다.
 각각의 DNS 설정에 다음과 같이 Cache 를 0으로 초기해준다.
@@ -120,40 +150,30 @@ Set-DnsServerCache -MaxTTL 00:00:00 -ComputerName "10.0.1.133"
 Set-DnsServerCache -MaxNegativeTTL 00:00:00 -ComputerName "10.0.1.133"
 ```
 
-
 해당 설정 후 DNS Server 에서 레코드를 변경한 후 Client 에서 nslookup 을 수행해보면 바로 업데이트된 레코드가 반환되는 것을 볼 수 있다.
 
 
+---
 
-## 정리
+## 요약
 
-```bash
-terraform destroy
-```
-
-## 문제 해결
-
-**해결 방안:**
 1. 조건부 전달자 재설정
 2. TTL 값 조정
 3. RSAT를 통해 직접 AD에 연결 후 DNS 를 초기화하거나, Cache TTL를 0으로 설정한다. 이 설정을 하는 경우 즉각 받아온다. 
 
-
-### RSAT (AD 관리 도구) 설치 및 초기 방법
-도메인 조인된 EC2에서 RSAT 설치:
-```powershell
-Install-WindowsFeature -Name RSAT-DNS-Server
-Install-WindowsFeature -Name RSAT-AD-Tools
-
-dnsmgmt.msc
-
 ```
+# AWS Managed AD가 DNS 쿼리를 받으면:
 
-<img width="947" height="669" alt="Image" src="https://github.com/user-attachments/assets/e617f100-b401-4289-8cb8-f5c4f843f428" />
+1. 내가 권한을 가진 존인가? (corp.example.com)
+   → YES: 직접 응답
+   → NO: 2단계로
 
+2. 조건부 포워더가 설정된 도메인인가? (partner.com → 192.168.1.100)
+   → YES: 해당 DNS 서버로 포워딩
+   → NO: 3단계로
 
-<img width="818" height="695" alt="Image" src="https://github.com/user-attachments/assets/a1ddcdc5-65b2-4a5f-a4e5-34c306af8a8f" />
-
+3. 기본 포워더로 전송 (VPC+2 → 8.8.8.8)
+```
 
 
 ## 예상 비용 (ap-northeast-2)
@@ -164,3 +184,10 @@ dnsmgmt.msc
 - DNS 서버 t3.micro: ~$8/월
 - VPC/NAT Gateway: ~$45/월
 - **총 예상: ~$384/월**
+
+
+## 리소스 정리
+
+```bash
+terraform destroy
+```
