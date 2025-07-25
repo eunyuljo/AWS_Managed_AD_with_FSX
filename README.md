@@ -35,11 +35,12 @@ cp terraform.tfvars.example terraform.tfvars
 
 # 기본 파일에서 복사해서 각 환경에 맞춰 설정해준다.
 
-
 ```
 
 2. **배포**
+
 ```bash
+
 terraform init
 terraform plan
 terraform apply
@@ -50,17 +51,20 @@ terraform apply
 - **DNS 서버**: `terraform output dns_server_public_ip`
 - **FSx 접속**: `\\<fsx_dns_name>\share`
 
-```
-참고: 
-  1. AD 에 조인된 윈도우에는 가입된 디렉터리 DNS 이름을 기준으로 접근한다.
+
+```bash
+  1. 배포 후 windows 접속 방법: 
+    AD 에 조인된 윈도우에는 가입된 디렉터리 DNS 이름을 기준으로 접근한다.
 	  User: corp.example.com\Admin
 	  Password : 위 tfvars 파일 내 암호 참고
+
 
   2. 인스턴스의 DNS 주소를 확인하여 Directory Service 에 반영된 DNS Server와 일치하는지 비교한다.
 ```
 
 
-## 주요 기능
+
+## 주요 기능 및 이해
 
 ### DNS 조건부 전달자
 외부 DNS 서버로 특정 도메인 포워딩:
@@ -79,51 +83,47 @@ AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안�
 - **기본 레코드**: test.example.local, web.example.local, app.example.local
 - **포워더**: dns-server private ip 
 
-## DNS 테스트
+## 기본 DNS 테스트
 
 기본 dns_server_records 에 지정된 test.example.local 이 가지고 있는 IP를 정상적으로 질의가 가능한 상태에서 시작한다.
-해당 zone 파일을 수정 후 named 재시작을 하더라도 windows 에서는 즉각적으로 IP가 갱신되지 않는 것을 볼 수 있다.
 
 도메인 조인된 EC2에서:
 ```powershell
-# Client 및 AD DNS 캐시 초기화
-Clear-DnsClientCache
 
-# 외부 도메인 조회 테스트
+# 외부 도메인 조회 테스트하여 현재 반영된 레코드는 기본 10.0.1.100
 nslookup test.example.local
 
-```
+  {
+    name  = "test"
+    type  = "A"
+    value = "10.0.1.100"
+  },
+
+# 레코드가 조회되는지까지 확인한다.
 
 
+dns-server 에서도 zone 파일을 직접 수정하여 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 즉각 받아오지 않는다.
+이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 
+이 캐시된 값을 반환해주기 때문이다.
 
-# dns-server 에서도 zone 파일을 직접 수정하여 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 받아오지 않는다.
-# 이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 
-# 이 캐시된 값을 반환해주기 때문이다.
 
-```
-Get-DnsServerCache -ComputerName "DC-IP" 
+```bash
+# 10.0.1.133 -> Directory Service 에서 확인 가능한 DNS IP
+Get-DnsServerCache -ComputerName "10.0.1.133"
 ```
 
 명령을 통해 확인해보면 MAXTTL 은 1시간, MaxNegativeTTL은 15분이다.
-
 각각의 DNS 설정에 다음과 같이 Cache 를 0으로 초기해준다.
 
-```
+```bash
 Set-DnsServerCache -MaxTTL 00:00:00 -ComputerName "10.0.1.133"
 Set-DnsServerCache -MaxNegativeTTL 00:00:00 -ComputerName "10.0.1.133"
 ```
 
+
 해당 설정 후 DNS Server 에서 레코드를 변경한 후 Client 에서 nslookup 을 수행해보면 바로 업데이트된 레코드가 반환되는 것을 볼 수 있다.
 
 
-## 예상 비용 (ap-northeast-2)
-
-- Managed AD Standard: ~$146/월
-- FSx 300GB/32MB/s: ~$150/월  
-- EC2 t3.medium (Windows): ~$35/월
-- DNS 서버 t3.micro: ~$8/월
-- VPC/NAT Gateway: ~$45/월
-- **총 예상: ~$384/월**
 
 ## 정리
 
@@ -154,3 +154,13 @@ dnsmgmt.msc
 
 <img width="818" height="695" alt="Image" src="https://github.com/user-attachments/assets/a1ddcdc5-65b2-4a5f-a4e5-34c306af8a8f" />
 
+
+
+## 예상 비용 (ap-northeast-2)
+
+- Managed AD Standard: ~$146/월
+- FSx 300GB/32MB/s: ~$150/월  
+- EC2 t3.medium (Windows): ~$35/월
+- DNS 서버 t3.micro: ~$8/월
+- VPC/NAT Gateway: ~$45/월
+- **총 예상: ~$384/월**
