@@ -19,9 +19,9 @@ Recursive 한 동작을 지원하지 않는 관계로 실시간으로 DNS Server
 - **VPC**: 가용영역의 퍼블릭/프라이빗 서브넷 2개 
 - **AWS Managed Microsoft AD**: Standard 에디션 디렉토리 서비스
 - **FSx for Windows**: AD 통합 파일 시스템
-- **도메인 조인 EC2**: 퍼블릭 서브넷의 Windows Server 2022
+- **도메인 조인 EC2**: 퍼블릭 서브넷의 Windows Server 2019
 - **외부 DNS 서버**: BIND9 기반 DNS 서버 (example.local 도메인)
-- **DNS 조건부 전달자**: AD에서 외부 DNS로 포워딩
+- **DNS 조건부 전달자**: 특정 도메인에 대해서는 AD에서 외부 DNS ( bind9 ) 로 포워딩
 
 ## 빠른 시작
 
@@ -32,6 +32,9 @@ Recursive 한 동작을 지원하지 않는 관계로 실시간으로 DNS Server
 # Terraform 수행 환경에 맞는 일부 설정이 필요하다. PEM 키 설정이 필요하다.
 
 cp terraform.tfvars.example terraform.tfvars
+
+# 기본 파일에서 복사해서 각 환경에 맞춰 설정해준다.
+
 
 ```
 
@@ -57,21 +60,13 @@ terraform apply
 ```
 
 
-
 ## 주요 기능
 
 ### DNS 조건부 전달자
 외부 DNS 서버로 특정 도메인 포워딩:
 ```hcl
-ad_dns_forwarders = [
-  {
-    domain_name = "example.local"
-    dns_ips     = ["10.0.102.150"]  # DNS 서버 IP
-  }
-]
-
 위 DNS IP는 AMZN 2023 으로 생성한 bind9 서버로 해당 인스턴스의 사설 IP를 대상으로 한다.
-AD 가 Forwarder로써 바라보는 외부 DNS라는 의미이다. 
+AD 가 Forwarder로써 바라보는 외부 DNS 를 의미한다.
 
 첫번 째 apply 간 확인 후 
 dns_server_private_ip 정보를 바탕으로 해당 ad_dns_forwarders 적용한다.
@@ -79,10 +74,10 @@ AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안�
 
 ```
 
-### 외부 DNS 서버 및 테스트 레코드 
+### 외부 DNS ( named ) 서버 및 테스트 레코드 
 - **도메인**: example.local
 - **기본 레코드**: test.example.local, web.example.local, app.example.local
-- **포워더**: 8.8.8.8, 8.8.4.4
+- **포워더**: dns-server private ip 
 
 ## DNS 테스트
 
@@ -91,28 +86,35 @@ AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안�
 
 도메인 조인된 EC2에서:
 ```powershell
-# AD DNS 캐시 초기화
+# Client 및 AD DNS 캐시 초기화
 Clear-DnsClientCache
-# Windows 에서 직접 캐시 초기화해도 어차피 AD의 DNS 에서 Cached 된 IP를 받아오므로 의미 없다.
 
 # 외부 도메인 조회 테스트
 nslookup test.example.local
-```
-
-## 파일 구조
 
 ```
-├── main.tf                    # 메인 설정
-├── variables.tf               # 변수 정의
-├── outputs.tf                 # 출력 값
-├── terraform.tfvars.example   # 설정 예시
-└── modules/
-    ├── networking/            # VPC 설정
-    ├── active-directory/      # Managed AD 설정
-    ├── fsx/                   # FSx 설정
-    ├── ec2/                   # Windows EC2 설정
-    └── dns-server/            # BIND9 DNS 서버
+
+
+
+# dns-server 에서도 zone 파일을 직접 수정하여 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 받아오지 않는다.
+# 이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 
+# 이 캐시된 값을 반환해주기 때문이다.
+
 ```
+Get-DnsServerCache -ComputerName "DC-IP" 
+```
+
+명령을 통해 확인해보면 MAXTTL 은 1시간, MaxNegativeTTL은 15분이다.
+
+각각의 DNS 설정에 다음과 같이 Cache 를 0으로 초기해준다.
+
+```
+Set-DnsServerCache -MaxTTL 00:00:00 -ComputerName "10.0.1.133"
+Set-DnsServerCache -MaxNegativeTTL 00:00:00 -ComputerName "10.0.1.133"
+```
+
+해당 설정 후 DNS Server 에서 레코드를 변경한 후 Client 에서 nslookup 을 수행해보면 바로 업데이트된 레코드가 반환되는 것을 볼 수 있다.
+
 
 ## 예상 비용 (ap-northeast-2)
 
@@ -134,7 +136,7 @@ terraform destroy
 **해결 방안:**
 1. 조건부 전달자 재설정
 2. TTL 값 조정
-3. RSAT를 통해 직접 AD에 연결 후 DNS 를 초기화한다. 이 설정을 하는 경우 즉각 받아온다. 
+3. RSAT를 통해 직접 AD에 연결 후 DNS 를 초기화하거나, Cache TTL를 0으로 설정한다. 이 설정을 하는 경우 즉각 받아온다. 
 
 
 ### RSAT (AD 관리 도구) 설치 및 초기 방법
