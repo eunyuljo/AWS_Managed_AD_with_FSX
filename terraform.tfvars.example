@@ -51,13 +51,9 @@ dns_server_records = [
 dns_server_forwarder_dns = "8.8.8.8; 8.8.4.4"
 
 # DNS Forwarder Configuration
-# Update the DNS IP to point to your DNS server's private IP after deployment
+# Additional DNS forwarders (example.local is automatically added using DNS server's IP)
 ad_dns_forwarders = [
-  {
-    domain_name = "example.local"        # External domain to forward
-    dns_ips     = ["10.0.102.100"]       # DNS server private IP (update after deployment)
-  }
-  # Add more forwarders as needed:
+  # Add custom forwarders as needed:
   # {
   #   domain_name = "company.local"
   #   dns_ips     = ["10.0.0.100"]

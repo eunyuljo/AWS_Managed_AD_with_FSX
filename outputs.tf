@@ -30,44 +30,44 @@ output "managed_ad_access_url" {
   value       = module.active_directory.access_url
 }
 
-# FSx Outputs
-output "fsx_id" {
-  description = "ID of the FSx Windows File System"
-  value       = module.fsx.fsx_id
-}
+# # FSx Outputs
+# output "fsx_id" {
+#   description = "ID of the FSx Windows File System"
+#   value       = module.fsx.fsx_id
+# }
 
-output "fsx_dns_name" {
-  description = "DNS name of the FSx Windows File System"
-  value       = module.fsx.dns_name
-}
+# output "fsx_dns_name" {
+#   description = "DNS name of the FSx Windows File System"
+#   value       = module.fsx.dns_name
+# }
 
-output "fsx_network_interface_ids" {
-  description = "Network Interface IDs of the FSx Windows File System"
-  value       = module.fsx.network_interface_ids
-}
+# output "fsx_network_interface_ids" {
+#   description = "Network Interface IDs of the FSx Windows File System"
+#   value       = module.fsx.network_interface_ids
+# }
 
-output "fsx_preferred_subnet_id" {
-  description = "Preferred subnet ID of the FSx Windows File System"
-  value       = module.fsx.preferred_subnet_id
-}
+# output "fsx_preferred_subnet_id" {
+#   description = "Preferred subnet ID of the FSx Windows File System"
+#   value       = module.fsx.preferred_subnet_id
+# }
 
 # EC2 Outputs
-output "ec2_instance_id" {
+output "domain-joined_ec2_instance_id" {
   description = "ID of the domain-joined EC2 instance"
   value       = module.ec2.instance_id
 }
 
-output "ec2_private_ip" {
+output "domain-joined_ec2_private_ip" {
   description = "Private IP address of the EC2 instance"
   value       = module.ec2.private_ip
 }
 
-output "ec2_public_ip" {
+output "domain-joined_ec2_public_ip" {
   description = "Public IP address of the EC2 instance"
   value       = module.ec2.public_ip
 }
 
-output "ec2_instance_state" {
+output "domain-joined_ec2_instance_state" {
   description = "State of the EC2 instance"
   value       = module.ec2.instance_state
 }

@@ -1,13 +1,18 @@
 ## 작성 배경
 
 1. 
-AWS FSx 를 사용하기 위해서는 기본적으로 AD 를 통한 연결 구성이 필요하다.
-이 AD에 조인된 서버는 AD의 DNS를 참조하게 되는데, 
-이 DNS는 기본적으로 Conditional Forwarding 를 설정하고 있으며, Recursive 한 동작을 지원하지 않는 관계로 실시간으로 DNS Server의 레코드를 받아오지 않는다. 
-추가적인 대안을 확인하기 위한 기본 Base 인프라를 재현하기 위한 Terraform Code 이다.
+추가적으로 FSx 에 대한 연결 방법을 메인으로 작성. ( FSX 관련 주석 상태 - 비용 )
 
 2. 
-추가적으로 FSx 에 대한 연결 방법도 추가적으로 별도로 확인해본다.
+AWS FSx 를 사용하기 위해서는 기본적으로 AD 를 통한 연결 구성이 필요하다.
+이 AD에 조인된 서버는 AD의 DNS를 참조하게 되는데, 
+AWS FSx 를 마운트해서 사용하는 서버의 경우 
+위 조건에 따라 애플리케이션 통신을 위한 DNS 해석 등에 대한 영향이 AD의 DNS 속성의 영향을 받게됨을 의미한다.
+해당 AD DNS는 기본적으로 Conditional Forwarding 를 동작하고 있으며, 
+Recursive 한 동작을 지원하지 않는 관계로 실시간으로 DNS Server의 레코드를 받아오지 않는다. 
+
+이는 직접 동작을 확인하고 추가적인 대안을 확인하기 위한 기본 Base 인프라를 재현하기 위한 Terraform Code 이다.
+
 
 ## 아키텍처
 
@@ -66,7 +71,11 @@ ad_dns_forwarders = [
 ]
 
 위 DNS IP는 AMZN 2023 으로 생성한 bind9 서버로 해당 인스턴스의 사설 IP를 대상으로 한다.
-AD 가 Forwarder로써 바라보는 외부 DNS라는 의미이다. 이 정보를 확인 후 Forwarder 설정을 추가로 다시 Apply 해준다. = depend on 은 설정 안했다.
+AD 가 Forwarder로써 바라보는 외부 DNS라는 의미이다. 
+
+첫번 째 apply 간 확인 후 
+dns_server_private_ip 정보를 바탕으로 해당 ad_dns_forwarders 적용한다.
+AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안했다.
 
 ```
 

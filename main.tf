@@ -22,6 +22,18 @@ locals {
     Environment = var.environment
     Project     = "AWS-Managed-AD-FSx"
   }
+
+  # Dynamic DNS forwarders using DNS server's private IP 
+  # DNS Server 생성 후 IP 정보 받아옴 ( variables.tf - dns_server_zone_name )
+  dynamic_dns_forwarders = concat(
+    var.ad_dns_forwarders,
+    [
+      {
+        domain_name = var.dns_server_zone_name
+        dns_ips     = [module.dns_server.private_ip]
+      }
+    ]
+  )
 }
 
 # Networking Module
@@ -47,25 +59,27 @@ module "active_directory" {
   domain_name     = var.ad_domain_name
   admin_password  = var.ad_admin_password
   edition         = var.ad_edition
-  dns_forwarders  = var.ad_dns_forwarders
+  dns_forwarders  = local.dynamic_dns_forwarders # local dns-server ip 전달 받음
   tags            = local.common_tags
+
+  depends_on = [module.dns_server]
 }
 
-# FSx Module
-module "fsx" {
-  source = "./modules/fsx"
+# # FSx Module
+# module "fsx" {
+#   source = "./modules/fsx"
 
-  environment          = var.environment
-  vpc_id              = module.networking.vpc_id
-  vpc_cidr            = module.networking.vpc_cidr_block
-  subnet_id           = module.networking.private_subnets[0]
-  active_directory_id = module.active_directory.directory_id
-  storage_capacity    = var.fsx_storage_capacity
-  throughput_capacity = var.fsx_throughput_capacity
-  tags                = local.common_tags
+#   environment          = var.environment
+#   vpc_id              = module.networking.vpc_id
+#   vpc_cidr            = module.networking.vpc_cidr_block
+#   subnet_id           = module.networking.private_subnets[0]
+#   active_directory_id = module.active_directory.directory_id
+#   storage_capacity    = var.fsx_storage_capacity
+#   throughput_capacity = var.fsx_throughput_capacity
+#   tags                = local.common_tags
 
-  depends_on = [module.active_directory]
-}
+#   depends_on = [module.active_directory]
+# }
 
 # EC2 Module
 module "ec2" {
