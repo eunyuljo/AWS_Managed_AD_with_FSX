@@ -70,11 +70,6 @@ terraform apply
 ```hcl
 위 DNS IP는 AMZN 2023 으로 생성한 bind9 서버로 해당 인스턴스의 사설 IP를 대상으로 한다.
 AD 가 Forwarder로써 바라보는 외부 DNS 를 의미한다.
-
-첫번 째 apply 간 확인 후 
-dns_server_private_ip 정보를 바탕으로 해당 ad_dns_forwarders 적용한다.
-AD와 DNS 간 연결 관계를 이해시키기 위해 depend on 은 설정 안했다.
-
 ```
 
 ### 외부 DNS ( named ) 서버 및 테스트 레코드 
