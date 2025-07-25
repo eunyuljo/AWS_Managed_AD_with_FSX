@@ -95,7 +95,7 @@ nslookup test.example.local
   },
 ```
 
-dns-server 에서도 zone 파일을 직접 수정하여 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 즉각 받아오지 않는다.
+dns-server 에서도 zone 파일을 직접 수정하여 test.example.local 의 레코드를 변경 후 재시작하여 반영해줘도 windows 에서는 업데이트된 레코드를 즉각 받아오지 않는다.
 이는 AD 내 DNS 설정인 Conditional Forwarding 설정에 의해 TTL 값을 기본적으로 가지고 있어 이 캐시된 값을 반환해주기 때문이다.
 이 과정에서 애플리케이션 요청에 있어서 통신 불량이 발생한다.
 
